@@ -32,6 +32,25 @@ let rendererConfig = {
   module: {
     rules: [
       {
+        test: /\.(js|vue)$/,
+        enforce: 'pre',
+        exclude: /node_modules/,
+        use: {
+          loader: 'eslint-loader',
+          options: {
+            formatter: require('eslint-friendly-formatter')
+          }
+        }
+      },
+      {
+        test: /\.scss$/,
+        use: ['vue-style-loader', 'css-loader', 'sass-loader']
+      },
+      {
+        test: /\.sass$/,
+        use: ['vue-style-loader', 'css-loader', 'sass-loader?indentedSyntax']
+      },
+      {
         test: /\.less$/,
         use: ['vue-style-loader', 'css-loader', 'less-loader']
       },
@@ -125,8 +144,8 @@ let rendererConfig = {
   },
   resolve: {
     alias: {
-      '@': path.join(__dirname, '../src/renderer'),
-      'assets': path.join(__dirname, '../src/renderer/assets'),
+      '@@': path.join(__dirname, '../src'),
+        '@': path.join(__dirname, '../src/renderer'),
       'vue$': 'vue/dist/vue.esm.js'
     },
     extensions: ['.js', '.vue', '.json', '.css', '.node']
