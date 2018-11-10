@@ -1,6 +1,5 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron'; // eslint-disable-line
-import common from '@@/util/common';
-import ipc from '@@/util/ipc';
+import { app, BrowserWindow, Menu } from 'electron'; // eslint-disable-line
+import rpcServer from '@@/util/rpcServer';
 /**
  * Set `__static` path to static files in production
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
@@ -12,44 +11,14 @@ let mainWindow;
 const winURL = process.env.NODE_ENV === 'development'
     ? 'http://localhost:9080'
     : `file://${__dirname}/index.html`;
-ipcMain.on('server', (event, messageJson) => {
-    console.log('server', event, messageJson);
-    let message = common.decode(messageJson);
-    let req = message['req'] || '';
-    let rev = message['rev'] || 'error';
-    let paramObj = message['param'] || {};
-    let sender = event.sender;
-    if (!req || !ipc[req]) {
-        sender.send('client', common.encode({
-            req: rev,
-            code: -1,
-            msg: 'fn is not exists'
-        }));
-        return false;
-    }
-    ipc[req](paramObj).then((response) => {
-        sender.send('client', common.encode({
-            req: rev,
-            code: 0,
-            msg: 'success',
-            data: response
-        }));
-    }, (err) => {
-        sender.send('client', common.encode({
-            req: rev,
-            code: 1,
-            msg: err
-        }));
-    });
-});
 function createWindow() {
     /**
      * Initial window options
      */
     mainWindow = new BrowserWindow({
-        height: 563,
+        height: 800,
         useContentSize: true,
-        width: 1000,
+        width: 1200
     });
     Menu.setApplicationMenu(null);
     mainWindow.loadURL(winURL);

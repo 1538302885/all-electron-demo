@@ -9,7 +9,8 @@
             <el-container>
                 <!--左侧侧边栏-->
                 <el-aside width="300px">
-                    <el-tree :data="dirTree" :props="defaultProps" @node-click="treeNodeClick"></el-tree>
+                    <el-tree ref="dirTree" :data="dirTree" :props="defaultProps" :load="loadSubFile" lazy
+                             @node-click="treeNodeClick"></el-tree>
                 </el-aside>
                 <!--主-->
                 <el-main>
@@ -85,8 +86,7 @@ import 'codemirror/addon/fold/indent-fold.js';
 import 'codemirror/addon/fold/markdown-fold.js';
 import 'codemirror/addon/fold/comment-fold.js';
 
-import { ipcRenderer } from 'electron';
-import common from '@@/util/common';
+import rpcClient from '@@/util/rpcClient';
 
 export default {
     components: {
@@ -94,37 +94,20 @@ export default {
     },
     data() {
         return {
-            code: '123',
+            code: '',
             cmOptions: {
                 tabSize: 4,
                 mode: 'text/javascript',
-                lineNumbers: true,
+                lineNumbers: true
             },
             defaultProps: {
                 children: 'children',
-                label: 'fileName'
+                label: 'fileName',
+                isLeaf: 'isLeaf'
             },
             dirTree: [],
             treeNodeSelected: null
         }
-    },
-    created() {
-        let _this = this;
-        ipcRenderer.on('client', (event, messageJson) => {
-            console.log('client', event, messageJson);
-            let message = common.decode(messageJson);
-            let req = message['req'] || '';
-            let code = message['code'] || 0;
-            let data = message['data'] || {};
-            if (!req || !_this[req]) {
-                return false;
-            }
-            if (code !== 0) {
-                // 弹窗提示错误 todo
-                return false;
-            }
-            _this[req](data);
-        });
     },
     mounted() {
     },
@@ -141,34 +124,49 @@ export default {
             return this.$electron.remote.app.getName();
         },
         showDirDialog() {
-            let messageJson = common.encode({
-                req: 'chooseDir',
-                rev: 'loadDirTree'
+            let _this = this;
+            rpcClient.send('chooseDir', {}).then((paths) => {
+                _this.readDirMeta(paths);
             });
-            ipcRenderer.send('server', messageJson);
         },
-        loadDirTree(paths) {
-            console.log('loadDirTree', paths);
+        readDirMeta(paths) {
+            console.log('readDirMeta', paths);
             if (!paths) {
                 // 路径不存在说明用户取消了操作则页面不作处理
                 return false;
             }
+            let _this = this;
             let dirPath = paths[0];
-            let messageJson = common.encode({
-                req: 'readDirTree',
-                rev: 'displayDirTree',
-                param: {
-                    dirPath
-                }
+            rpcClient.send('readFileMeta', {dirPath}).then((fileMeta) => {
+                _this.displayDir(fileMeta);
             });
-            ipcRenderer.send('server', messageJson);
         },
-        displayDirTree(root) {
-            if (!root) {
+        displayDir(fileMeta) {
+            if (!fileMeta) {
                 // 目录不存在
                 return false;
             }
-            this.dirTree = [root];
+            this.dirTree = this.dirTree.concat([Object.assign({
+                isLeaf: !fileMeta['isDirectory']
+            }, fileMeta)]);
+        },
+        loadSubFile(node, resolve) {
+            let nodeData = node['data'];
+            if (!nodeData['filePath'] || nodeData['isLeaf']) {
+                // 如果是文件则不需要加载子文件
+                resolve([]);
+                return false;
+            }
+            let _this = this;
+            let filePath = nodeData['filePath'];
+            console.log('filePath', filePath);
+            rpcClient.send('readSubFileMeta', {filePath}).then((subFileMetaList) => {
+                resolve(subFileMetaList.map((subFileMeta) => {
+                    return Object.assign({
+                        isLeaf: !subFileMeta['isDirectory']
+                    }, subFileMeta);
+                }));
+            });
         },
         treeNodeClick(node) {
             console.log('node', node);
@@ -176,15 +174,11 @@ export default {
                 // 如果是目录则不作处理
                 return false;
             }
-            this.treeNodeSelected = node;
-            let messageJson = common.encode({
-                req: 'readFileData',
-                rev: 'displayFileData',
-                param: {
-                    filePath: node['filePath']
-                }
+            let _this = this;
+            _this.treeNodeSelected = node;
+            rpcClient.send('readFileData', {filePath: node['filePath']}).then((subFileMetaList) => {
+                _this.displayFileData(subFileMetaList);
             });
-            ipcRenderer.send('server', messageJson);
         },
         displayFileData(content) {
             this.code = content;

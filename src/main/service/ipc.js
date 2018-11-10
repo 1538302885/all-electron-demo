@@ -16,14 +16,28 @@ let readDirTree = (param) => {
         resolve(dirTree);
     });
 };
+let readFileMeta = (param) => {
+    return new Promise((resolve) => {
+        let fileMeta = common.readFileMeta(param['dirPath']);
+        resolve(fileMeta);
+    });
+};
 let readFileData = (param) => {
     return new Promise((resolve) => {
         let fileContent = common.loadFileData(param['filePath']);
         resolve(fileContent);
     });
 };
+let readSubFileMeta = (param) => {
+    return new Promise((resolve) => {
+        let subFileMetaList = common.readSubFileMeta(param['filePath']);
+        resolve(subFileMetaList);
+    });
+};
 export default {
     chooseDir,
     readDirTree,
-    readFileData
+    readFileMeta,
+    readFileData,
+    readSubFileMeta
 };

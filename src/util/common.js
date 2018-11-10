@@ -25,6 +25,34 @@ let listDirTree = (filePath)=> {
     };
     return file;
 };
+let readFileMeta = (filePath)=> {
+    if (!fs.existsSync(filePath)) {
+        return null;
+    }
+    let stat = fs.lstatSync(filePath);
+    let isDirectory = stat.isDirectory();
+    let file = {
+        filePath: filePath,
+        fileName: filePath,
+        isDirectory: isDirectory
+    };
+    return file;
+};
+let readSubFileMeta = (filePath)=> {
+    if (!fs.existsSync(filePath)) {
+        return null;
+    }
+    let stat = fs.lstatSync(filePath);
+    let isDirectory = stat.isDirectory();
+    if (!isDirectory) {
+        return [];
+    }
+    let subFileNames = fs.readdirSync(filePath);
+    return subFileNames.map((subFileName) => {
+        let subFilePath = path.join(filePath, subFileName);
+        return readFileMeta(subFilePath);
+    });
+};
 let loadFileData = (filePath) => {
     if (!fs.existsSync(filePath)) {
         return '';
@@ -35,5 +63,7 @@ export default {
     encode,
     decode,
     listDirTree,
+    readFileMeta,
+    readSubFileMeta,
     loadFileData
 };
